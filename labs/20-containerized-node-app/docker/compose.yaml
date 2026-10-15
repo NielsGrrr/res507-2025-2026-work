@@ -28,6 +28,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    command: npm run dev
+    volumes:
+      - ../app:/app
+      - /app/node_modules
+    working_dir: /app
 
 volumes:
   pgdata:
