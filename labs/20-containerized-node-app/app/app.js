@@ -3,6 +3,7 @@ import formbody from "@fastify/formbody";
 import view from "@fastify/view";
 import handlebars from "handlebars";
 import postgres from "@fastify/postgres";
+import packagejson from "./package.json" with { type: "json" };
 
 export async function buildApp() {
   // Create Fastify instance
@@ -52,6 +53,11 @@ export async function buildApp() {
     const result = await app.pg.query('SELECT * FROM quotes');
     return result.rows;
   });
-  
+
+  app.get("/version", async () => {
+    const version = packagejson.version
+    return {"version": version};
+  });
+
   return app;
 };
