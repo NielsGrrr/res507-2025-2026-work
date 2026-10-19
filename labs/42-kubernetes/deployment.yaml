@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: quote-app
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: quote-app
@@ -24,3 +24,9 @@ spec:
               port: 3000
             initialDelaySeconds: 3
             periodSeconds: 5
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: quote-db-secret
+                  key: DATABASE_URL
