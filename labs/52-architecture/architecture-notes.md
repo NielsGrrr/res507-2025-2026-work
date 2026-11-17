@@ -48,15 +48,45 @@ flowchart TB
   secret -. "env / init.sql" .-> db
 ```
 
-> PostgreSQL status: **deployed and verified** / **planned** ← keep the one that is true.
+> PostgreSQL status: **deployed** (manifests applied on 2026-10-19). Persistence check: **TODO — mark "verified" only after section Evidence is filled with real output.**
 
 ## Evidence
 
-- Lab 42 verification (health requests, 3 replicas, Pod replacement, readiness failure/recovery): [../42-kubernetes/verification.md](../42-kubernetes/verification.md)
-- PVC status: `quote-db-data   Bound   …` ← paste
-- Database Pod before replacement: `quote-db-…` ← paste
-- Database Pod after `rollout restart`: `quote-db-…` ← paste
-- Quote marker: `res509-…` found before **and** after the database Pod replacement ← paste the two `grep` results
+- Lab 42 results (health requests, 3 replicas, Pod replacement, readiness failure/recovery): [../42-kubernetes/verification.md](../42-kubernetes/verification.md)
+
+**PVC and database Pod**
+
+```
+$ kubectl get pvc quote-db-data
+TODO quote-db-data   Bound   pvc-...   1Gi   RWO   local-path
+
+$ kubectl get pods -l app=quote-db
+TODO quote-db-<old>   1/1   Running
+```
+
+**Quote inserted through the app** (port-forward `svc/quote-app 8080:80`)
+
+```
+$ quote_marker="res509-$(date +%s)"; echo "$quote_marker"
+TODO res509-...
+$ curl --fail --data-urlencode "author=RES509" --data-urlencode "text=$quote_marker" http://127.0.0.1:8080/quotes
+$ curl --fail http://127.0.0.1:8080/ -o /tmp/res509-quotes.html && grep -F "$quote_marker" /tmp/res509-quotes.html
+TODO <line containing res509-...>
+```
+
+**After database Pod replacement (same PVC)**
+
+```
+$ kubectl rollout restart deployment/quote-db && kubectl rollout status deployment/quote-db --timeout=180s
+$ kubectl get pods -l app=quote-db
+TODO quote-db-<new>   1/1   Running
+$ curl --fail http://127.0.0.1:8080/ -o /tmp/res509-quotes-after.html && grep -F "$quote_marker" /tmp/res509-quotes-after.html
+TODO <same line containing res509-...>
+```
+
+Result: old Pod `TODO` → new Pod `TODO`; the marker is found before **and** after → the data lives in the PVC, not in the container.
+
+> If this check cannot be completed: replace the block above with the last successful checkpoint (e.g. "PVC Bound and quote-db 1/1") and the actual blocker.
 
 ## Boundaries
 
@@ -66,4 +96,5 @@ flowchart TB
 
 ## Next action / main limitation
 
-- ← e.g. "Single node and local-path storage are single points of failure; next step: database backups." or the current blocker if something is unfinished.
+- **Main limitation:** the whole system runs on one VM with `local-path` storage, so the node and its disk are single points of failure: three app replicas protect against a Pod crash, not against losing the VM.
+- **Next action:** add database backups (e.g. a scheduled `pg_dump` stored outside the VM) before considering a multi-node cluster with replicated storage (Lab 62).
